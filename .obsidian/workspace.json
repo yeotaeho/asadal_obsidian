@@ -1,0 +1,263 @@
+{
+  "main": {
+    "id": "f612fffa34229b49",
+    "type": "split",
+    "children": [
+      {
+        "id": "302eccdfaeb95a46",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "aca941a5dc2a7072",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "아사달/프로젝트/AI음성/AI음성.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "AI음성"
+            }
+          },
+          {
+            "id": "fe2016a499fd3bd3",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "아사달/프로젝트/AI음성/AI음성 - 런타임 플로우.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "AI음성 - 런타임 플로우"
+            }
+          }
+        ],
+        "currentTab": 1
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "b4eb8e8f2c15a6c1",
+    "type": "split",
+    "children": [
+      {
+        "id": "663fe7ce3f01d7a4",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "aa3d8a82e2df1daa",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "파일 탐색기"
+            }
+          },
+          {
+            "id": "c078972665e89f63",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "검색"
+            }
+          },
+          {
+            "id": "54e497b140927ac9",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "북마크"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 306.5
+  },
+  "right": {
+    "id": "934e23a4d1e3a510",
+    "type": "split",
+    "children": [
+      {
+        "id": "804a9c68e9cacd76",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "e1140f0db70c5c90",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "테스트.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "테스트 의 백링크"
+            }
+          },
+          {
+            "id": "ce732e073ce7bcb6",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "테스트.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "테스트 의 나가는 링크"
+            }
+          },
+          {
+            "id": "4ed41513f2977ec9",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "태그"
+            }
+          },
+          {
+            "id": "089879560f8cb5c7",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "모든 속성"
+            }
+          },
+          {
+            "id": "e3afd9dee4d8626c",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "테스트.md",
+                "followCursor": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "테스트 의 개요"
+            }
+          },
+          {
+            "id": "fe1d7382ab2a86bd",
+            "type": "leaf",
+            "state": {
+              "type": "copilot-chat-view",
+              "state": {},
+              "icon": "message-square",
+              "title": "Copilot"
+            }
+          }
+        ],
+        "currentTab": 5
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:빠른 전환기 열기": false,
+      "graph:그래프 뷰 열기": false,
+      "canvas:새 캔버스 만들기": false,
+      "daily-notes:오늘의 일일 노트 열기": false,
+      "templates:템플릿 삽입": false,
+      "command-palette:명령어 팔레트 열기": false,
+      "bases:새 베이스 생성하기": false,
+      "copilot:Open Copilot Chat": false
+    }
+  },
+  "active": "fe2016a499fd3bd3",
+  "lastOpenFiles": [
+    "아사달/일일작업내역/2026-08-13(6일차)/AI음성 - backup 전수 대조와 유실 수정 재이식.md",
+    "아사달/일일작업내역/2026-08-13(6일차)/AI음성 - 원본 브랜치 동등화와 프론트 기록 최신화.md",
+    "아사달/일일작업내역/2026-08-12(5일차)/AI음성 - v4 응답 지연 원인 규명과 GA 즉답 경로 복원.md",
+    "학습노트/파이썬 웹 서버 실행 구조/동시성 층위 — 워커·스레드·작업.md",
+    "학습노트/파이썬 웹 서버 실행 구조/uvicorn과 gunicorn.md",
+    "학습노트/파이썬 웹 서버 실행 구조/00 학습 지도 (MOC).md",
+    "학습노트/파이썬 웹 서버 실행 구조",
+    "아사달/일일작업내역/2026-08-13(6일차)/AI음성 - backup 전수 대조와 유실 수정 재이식.md.tmp.3260.5fa03ddbef9c",
+    "아사달/프로젝트/AI음성/AI음성.md.tmp.3260.b6470f960022",
+    "아사달/일일작업내역/2026-08-13(6일차)/AI음성 - Realtime 모델 2.1 전환과 GA 판정 통일.md",
+    "아사달/일일작업내역/2026-08-11(4일차)/AI음성 - 음성 품질 A B C 실측.md",
+    "아사달/일일작업내역/2026-08-11(4일차)/AI음성 - 업링크 투명 탭 재설계.md",
+    "아사달/일일작업내역/2026-08-11(4일차)/AI음성 - 오디오 로거 핀 제거와 방향 태그.md",
+    "아사달/일일작업내역/2026-08-11(4일차)/AI음성 - 필터 임계값 주입과 응답 큐 경합 수정.md",
+    "아사달/일일작업내역/2026-08-11(4일차)/AI음성 - OpenAI 자동 응답 이중 생성 차단.md",
+    "아사달/일일작업내역/2026-08-11(4일차)/AI음성 - tool 제어 이벤트 필터.md",
+    "아사달/일일작업내역/2026-08-11(4일차)/AI음성 - v4 무음 원인 규명.md",
+    "아사달/일일작업내역/2026-08-11(4일차)/AI음성 - v4 배포 검증과 GA session.update 가드.md",
+    "아사달/일일작업내역/2026-08-11(4일차)/AI음성 - 모바일 업링크 무도달 진단.md",
+    "아사달/일일작업내역/2026-08-11(4일차)/AI음성 - 브라우저 이벤트 중계 복원.md",
+    "아사달/일일작업내역/2026-08-11(4일차)/AI음성 - 모바일 ICE 원인 확정.md",
+    "아사달/일일작업내역/2026-08-11(4일차)/AI음성 - 모바일 정상 동작 확인.md",
+    "아사달/일일작업내역/2026-08-12(5일차)",
+    "아사달/일일작업내역/2026-08-10(3일차)/AI음성 - dev 배포와 aiortc 미설치 확인.md",
+    "학습노트/음성채팅과 네트워크/00 학습 지도 (MOC).md",
+    "아사달/프로젝트/AI음성/AI음성.md",
+    "아사달/프로젝트/AI음성/AI음성 - 파일·함수 레퍼런스.md",
+    "아사달/프로젝트/AI음성/AI음성 - 런타임 플로우.md",
+    "아사달/일일작업내역/2026-08-11(4일차)",
+    "아사달/일일작업내역/2026-08-10(3일차)/챗봇 - Gemini 3.6 Flash 모델 추가.md",
+    "아사달/프로젝트/챗봇/챗봇.md",
+    "아사달/프로젝트/AI음성/sedDMh63K",
+    "아사달/일일작업내역/2026-08-10(3일차)",
+    "아사달/프로젝트/챗봇",
+    "아사달/프로젝트/AI음성/AI음성.md.tmp.13364.582bdf55cc7e",
+    "아사달/일일작업내역/2026-08-07(2일차)/AI음성 - v3·v4 orchestrator 분리.md.tmp.13364.8c642b0db221",
+    "{84F0C1DF-FC4D-4E17-B478-A0C8F9D20D9C}.png",
+    "{788784F1-963F-4DE1-9B81-3642380199D8}.png",
+    "{1BCB8D35-6D43-4EA6-B1DB-0632658A828B}.png",
+    "{9B380DEB-21B5-43B7-B981-AF5B24BCCADF}.png",
+    "Pasted image 20260803101210.png",
+    "Pasted image 20260803094812.png",
+    "{B9D5BBC4-89B9-4BDE-B70A-66033EF0172A}.png",
+    "{788784F1-963F-4DE1-9B81-3642380199D8} 2.png",
+    "{788784F1-963F-4DE1-9B81-3642380199D8} 1.png",
+    "Pasted image 20260803100835.png"
+  ]
+}

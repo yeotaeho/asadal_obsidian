@@ -5,7 +5,7 @@ tags:
   - AI음성
   - 아키텍처
 created: 2026-08-10
-updated: 2026-08-18
+updated: 2026-08-21
 ---
 
 # AI음성 - 파일·함수 레퍼런스
@@ -216,31 +216,35 @@ release / ICE / 스위퍼 / reap / 무프레임  →  close()  sw:466
 
 ## 파일별 심볼
 
-### `v4/audio_tracks.py` — 클래스 3개, 업링크가 다운링크를 **상속** (8-14 게이트 복원)
+### `v4/audio_tracks.py` — 클래스 4개, 업링크 둘이 다운링크를 **상속** (8-21 미사용 탭 추가)
 
-`NoiseFilteredAudioProxyTrackV4` 는 `AudioProxyTrack` 을 상속해 지터버퍼·페이싱·좀비 가드를 물려받는다 (투명 탭 시절의 "상속 없음" 은 더 이상 사실이 아니다). `SilenceAudioStreamTrack` 만 별개다.
+업링크 트랙 둘 다 `AudioProxyTrack` 을 상속해 지터버퍼·페이싱·좀비 가드를 물려받는다 (투명 탭 시절의 "상속 없음" 은 더 이상 사실이 아니다). `SilenceAudioStreamTrack` 만 별개다.
 
 | 심볼 | 줄 | 역할 |
 |---|---|---|
-| `AudioProxyTrack` | 16 | **다운링크** 지터버퍼(OpenAI → 브라우저). 목표 120ms · 상한 480ms |
-| `_reader_loop` | 122 | 업스트림을 계속 읽어 버퍼에 넣는 별도 태스크 |
-| `_wait_for_prebuffer` | 175 | 재생 전 최소량 대기 |
-| `_build_silence_frame` | 217 | 언더플로 때 채울 무음 |
-| `_get_next_frame` | 231 | 버퍼에서 꺼냄. 비면 무음 + 언더플로 카운트, **600회(≈60초)면 좀비 종료**(at:265) |
-| `_pace_playout` | 297 | 실시간 속도 페이싱 |
-| `_retime_frame` | 315 | `Fraction` 으로 PTS 재계산 |
-| `recv` | 327 | 다운링크 본체 |
-| `SilenceAudioStreamTrack` | 347 | 자리를 채우는 무음 소스 |
-| `NoiseFilteredAudioProxyTrackV4` | 375 | **업링크 게이트**(브라우저 → OpenAI). 발화를 쥐고 관문 판정으로 방출·폐기 |
-| `_DRAIN_SPEEDUP` | 393 | 드레인 배속 **4** — 버스트(수신측 앞부분 폐기)와 1배속(라이브 유실)의 절충 |
-| `_calculate_rms` | 468 | 프레임 음량 |
-| `_gate_passes` | 479 | 3관문 순수 검사 — 부작용 없는 **단일 출처**. barge-in 사전 검사와 정산이 같은 조건을 본다 |
-| `_process_utterance` | 491 | 정산 전담(카운터 · 채택/폐기 info 로그 · 리셋). `force=True` 면 관문 우회(force_flush 용) |
-| `recv` | 529 | 게이트 본체: 드레인 → 패스스루 → 버퍼링(침묵 대체 송출) → 방출 판정(barge-in 1초 / 침묵 500ms 정산 / 30초 force_flush) |
-| `get_diagnostics` | 660 | 필터 카운터 포함 스냅샷 |
+| `AudioProxyTrack` | 16 | 지터버퍼 기반 클래스. 업링크 사본이라 상한 **960ms**(v3 사본은 320) |
+| `_ensure_reader_started` · `_reader_loop` | 101 · 128 | 업스트림을 계속 읽어 버퍼에 넣는 별도 태스크 |
+| `_wait_for_prebuffer` | 181 | 재생 전 최소량 대기 |
+| `_build_silence_frame` | 233 | 언더플로 때 채울 무음 |
+| `_get_next_frame` | 247 | 버퍼에서 꺼냄. 비면 무음 + 언더플로 카운트, **600회(≈60초)면 좀비 종료** |
+| `_pace_playout` | 313 | 실시간 속도 페이싱 |
+| `_retime_frame` | 331 | `Fraction` 으로 PTS 재계산 |
+| `recv` | 342 | 기반 클래스 본체 |
+| `SilenceAudioStreamTrack` | 362 | 자리를 채우는 무음 소스 |
+| `UplinkAudioProxyTrackV4` | 390 | **게이트 없는 업링크 탭** — 대기시간 미사용 전용. 꼬리표만 `PROXY-UP` 으로 바꾼 5줄 |
+| `NoiseFilteredAudioProxyTrackV4` | 402 | **업링크 게이트** — 발화를 쥐고 관문 판정으로 방출·폐기 |
+| `_DRAIN_SPEEDUP` | 420 | 드레인 배속 **4** — 버스트(수신측 앞부분 폐기)와 1배속(라이브 유실)의 절충 |
+| `_calculate_rms` | 504 | 프레임 음량 |
+| `_gate_passes` | 515 | 3관문 순수 검사 — 부작용 없는 **단일 출처**. barge-in 사전 검사와 정산이 같은 조건을 본다 |
+| `_process_utterance` | 527 | 정산 전담(카운터 · 채택/폐기 info 로그 · 리셋) |
+| `recv` | 565 | 게이트 본체: 드레인 → 패스스루 → 버퍼링(침묵 대체 송출) → 방출 판정(barge-in / 침묵 정산 / force_flush) |
+| `get_diagnostics` | 704 | 필터 카운터 포함 스냅샷 |
 
-> [!note] 게이트 파라미터 (완화 기본값, 8-18 `336dcdc`)
-> 발화 길이 **200ms** · 실발화(RMS>**120**) **120ms** · 비율 **30%** · 발화 종료 침묵 **500ms** · barge-in **1초** · force_flush **30초**. 구값(1초/300/600ms/60ms)은 A/B/C 재측정에서 발화 조각 소실을 확인해 완화했다 — 근거는 [[AI음성 - 게이트 복원 A B C 재측정]] · [[AI음성 - VAD 감도 측정]]. 7필드 전부 세션 생성 요청으로 주입 가능(router:72). 소음 차단 이득은 0 으로 실측됐고(OpenAI VAD 가 담당), 게이트의 실익은 시간 옵션 과제의 실동작 파라미터다.
+> [!note] 게이트 파라미터 (8-20 원본 복귀 기준)
+> 발화 길이 **1200ms** · 실발화(RMS>**400**) **600ms** · 비율 **30%** · 발화 종료 침묵 **400ms** · barge-in **1200ms** · force_flush **30초**. 8-18 완화값(200/120/500/1초)은 8-20 에 원본 복귀 후 재조정됐다 — 최신 표는 [[AI음성 - 런타임 플로우]] 참고. 7필드 전부 세션 생성 요청으로 주입 가능. 소음 차단 이득은 0 으로 실측됐고(OpenAI VAD 가 담당), 게이트의 실익은 시간 옵션 과제의 실동작 파라미터다.
+
+> [!warning] 대기시간을 낮출 땐 3필드를 함께 보낸다
+> `barge_in_ms` 만 낮추면 그 시점에 정산이 돌고 3관문 미달로 **발화가 폐기·리셋된다**. `min_utterance_duration_ms` = T, `min_speech_duration_ms` = T/2 를 같이 보내야 한다. 비율(`speech_ratio_threshold`)은 무차원이라 스케일하지 않는다 — 같이 줄이면 관문이 사라진다. 상세는 [[음성 선택과 대기시간 옵션]].
 
 ### `v4/tool_call_orchestrator.py`
 
@@ -311,12 +315,24 @@ release / ICE / 스위퍼 / reap / 무프레임  →  close()  sw:466
 
 | 엔드포인트 | 핸들러 | 줄 |
 |---|---|---|
-| `POST /agent/session` | `create_v4_agent_session` | 221 |
-| `POST /agent/session/{id}/release` | `release_v4_agent_session` | 288 |
-| `GET /agent/config` | `get_v4_agent_config` | 299 |
-| `POST /agent/tools/search-knowledge-base` | `run_v4_search_knowledge_tool` | 314 |
+| `POST /agent/session` | `create_v4_agent_session` | 236 |
+| `POST /agent/session/{id}/release` | `release_v4_agent_session` | 309 |
+| `GET /agent/config` | `get_v4_agent_config` | 320 |
+| `POST /agent/tools/search-knowledge-base` | `run_v4_search_knowledge_tool` | 335 |
 
 접두사는 `/AI_voice/voice-chat-v4` 다. 게이트는 `voice_router.py` 가 쥐고 있고 **기본 활성**이다. 끄려면 `ENABLE_VOICE_V4=off`. 알 수 없는 값이면 조용히 꺼지지 않고 기본값을 유지한다.
+
+###### 세션 요청 필드 (2026-08-21 `c5e754b`)
+
+`VoiceChatV4AgentSessionRequest` 가 프론트와의 계약이다. 필터 7필드 외에 세 가지가 여기서 갈린다.
+
+| 필드 | 기본값 | 비고 |
+|---|---|---|
+| `model` | `OPENAI_DEFAULT_MODEL` (`gpt-realtime-2.1`) | 구 기본값 `gpt-realtime-1.5` 는 **폐지된 Beta 평면 스키마** 경로였다 |
+| `voice` | `None` (세션 설정의 `cedar`) | `RealtimeVoice` Literal 10종. 허용값 밖은 FastAPI 가 422 |
+| `wait_time_enabled` | `True` | `False` 면 `UplinkAudioProxyTrackV4` 주입 + 필터 임계값 미주입 |
+
+`voice` 목록은 OpenAPI 스키마에 그대로 실린다 — **별도 목록 API 는 없고, `/docs` 가 단일 출처다.**
 
 ## 손댈 때 규칙
 
@@ -402,6 +418,7 @@ pytest ai_voice/voice_tests/ -q
 ## 관련 노트
 
 - [[AI음성]] — 프로젝트 진행 상황
+- [[AI음성 - 폴더·파일 역할 지도]] — ai_voice **전체**(STT·학습·회의록 포함)의 폴더·파일 역할. 이 노트는 v4 심층 전용이다
 - [[AI음성 - 런타임 플로우]] — 실행 흐름의 의미와 예외 경로
 - [[v3와 v4 아키텍처]] — v3 와의 구조적 차이
 - [[운영에서만 터지는 문제들]] — 이벤트 루프 불일치 등

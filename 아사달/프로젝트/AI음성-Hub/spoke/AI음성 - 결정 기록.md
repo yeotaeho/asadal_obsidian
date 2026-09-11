@@ -5,7 +5,7 @@ tags:
   - AI음성
   - 결정기록
 created: 2026-08-21
-updated: 2026-09-04
+updated: 2026-09-10
 ---
 
 # AI음성 - 결정 기록
@@ -31,6 +31,7 @@ updated: 2026-09-04
 | **dev PR 브랜치는 dev 가 아직 안 받은 main 커밋을 끌고 가지 않는다** — 그런 커밋이 있으면 `git merge-base origin/main origin/dev` 기준으로 브랜치를 딴다(또는 리베이스) | dev·main 의 `docker-compose.yml` 은 컨테이너명·포트(15252/5252)가 일부러 다르다. main 최신에서 딴 브랜치가 팀장 배포 커밋 4개를 dev PR 에 실어 compose 충돌(2026-09-03) | dev 를 브랜치로 풀 머지 / PR 에서 수동 충돌 해결 | [[AI음성 - 일시정지·멈춤 재생 제어 구현]] · 근본 해결은 compose 값의 `.env` 치환(팀장 제안 대상) |
 | **`docker-compose.yml` 은 git 추적 제외** — `docker-compose*.yml` gitignore, 참조본은 `docs/DEPLOY.md` 코드블록, 서버 로컬 관리 (팀장 결정, 2026-09-03) | dev·운영 compose 가 달라야 하는데 추적하면 브랜치마다 충돌. 배포 워크플로의 `reset --hard` 는 추적 파일만 되돌리므로 서버 파일은 유지됨 | `.env` 치환(`${VOICE_PORT:-5252}`)으로 한 파일 유지 — 구조 변경이 git 으로 흐르는 장점이 있었으나 미채택 / 예시 파일 추적 — 머지 시 compose 관련 파일이 생기지 않게 해달라는 요청으로 제거 | [[AI음성 - compose 추적 제외와 브랜치 정리]] |
 | **위 "merge-base 기준 브랜치" 규칙은 compose 추적 제외로 해소** — 다시 main 최신에서 따도 된다 | 충돌 원인 파일이 저장소에서 사라짐 | — | 〃 |
+| **dev 배포는 `dev` push(PR 머지 포함)로 자동, 운영은 Gitea Release publish 로만** — 둘 다 같은 서버(`dev-server`)에서 `ai_pro_voice_dev`/15252, `ai_pro_voice`/5252 로 돈다 (2026-09-10 확인) | `.gitea/workflows/deploy.yml`. 워크플로가 `git reset --hard origin/dev` 후 `compose build` → `up -d` 를 하므로 서버에서 손으로 `git pull`·`compose up` 하지 않는다. `docker exec ai_pro_voice` 는 **운영 컨테이너**다 — dev 확인은 `ai_pro_voice_dev`. 운영은 main 머지만으로 안 나가고 태그가 `origin/main` 에 포함돼야 한다 | 서버에서 수동 pull·빌드 — 배포 락(`flock`) 우회, 다음 워크플로의 `reset --hard` 에 되돌려짐 | [[AI음성 - 음성채팅기록 dev 검증과 도구 호출 전 한마디 제외]] |
 
 ## 아키텍처
 
@@ -58,6 +59,16 @@ updated: 2026-09-04
 | **미리듣기 타임아웃은 15초 + 0.03초 × 문장 길이** | 생성이 실시간의 약 9배라 2000자(약 500초 음성)는 15초 고정으로 항상 502 (Codex P2). 연결·응답 시작 대기 최대 5초에 여유 | 고정 15초 / 허용 길이 축소 | 〃 |
 | **다운링크 프록시는 v4 사본 `AudioProxyTrack`** (v3 사본 → v4, `abf7a21`) | 재생 제어 API 는 v4 사본에만 있고 v3 는 바이트 고정. dev 실측에서 v3 사본으로 `clear()` 호출 → AttributeError 로 발화 처리·종료말·멈춤 전부 중단. v4 사본은 v3 의 상위 집합(200ms 프리버퍼·좀비 가드·PROXY-DOWN 태그) | v3 사본 유지 + 재생 제어 우회 / v3 파일 수정(불가침 위반) | [[AI음성 - 일시정지·멈춤 재생 제어 구현]] |
 | **오디오 탭 스위치는 플래그 파일 내용(on/off)**, 경로는 `/data/logs` 마운트 아래 | 파일 삭제 없이 켜고 끄기(사용자 요청), 컨테이너라 `/tmp` 는 호스트에서 안 보임. 세션 생성 시점 평가라 재시작 불필요 | 본체 원안(`touch`/`rm` 존재 스위치, `/tmp`) / HTTP 토글 엔드포인트(무인증 서비스에 진단 스위치 노출) / `.env`(컨테이너 재생성 필요) | [[AI음성 - 오디오 탭 복원과 업링크 무변경 확인]] |
+| **음성 대화 판별은 `model_name` 접두사** (2026-09-10) | 기획서 ① 의 모델명 필터가 이미 그 일을 한다. 컬럼을 늘리지 않으므로 1단계 스키마 변경이 0 이 된다 | 플래그 컬럼 추가 — 필터가 중복되고 봇마다 테이블이 따로라 일괄 ALTER 가 필요 | [[음성채팅기록]] |
+| **음성 기록 저장은 브라우저가 `process_add.php` 를 부른다** | PHP 가 회원 세션과 User-Agent 로 `mb_id`·`contact` 를 채운다. 서버끼리 부르면 그 정보가 없어 접속 기기가 전부 `u` 가 된다. 텍스트 채팅과 같은 구조 | 음성 서비스가 MariaDB 직접 쓰기 — 새 접속, 두 갈래 저장 경로 / 브리지 `persist` 큐 사용 — 서버 통지가 이미 q·a 한 쌍이라 재조립이 불필요 | 〃 |
+| **인사말·종료말·RAG 안내말 제외는 응답 `kind` 로 판별** | 서버가 낸 `response.create` 만 kind 를 갖는다. 문구로 판별하면 관리자가 문구를 바꿀 때마다 깨진다. RAG 안내말(`kind="tts"`)은 실제 답변보다 먼저 발화돼 질문과 짝지어진다 | 텍스트 대조 / 인사말만 제외 | 〃 |
+| **응답 `kind` 는 `response.done` 의 flush 까지 살아 있어야 한다** — `_handle_interruption` 에서 걷지 않는다 | 끼어들기로 취소된 안내말도 뒤늦은 `response.done` 이 버퍼를 flush 한다. 그 시점에 kind 가 없으면 `"final"` 로 떨어져 "잠시만 기다려 주세요"가 답변으로 기록된다 | 세 dict 를 한 묶음으로 보고 대칭적으로 pop (Codex 재리뷰가 P1 로 잡아 되돌림) | 〃 |
+| **질문 녹음과 질문 텍스트는 OpenAI `item_id` 로 잇는다** | `speech_started` 와 전사 완료 이벤트가 같은 `item_id` 를 싣는다. 서버 `turn_id` 는 GA 경로에서 전사가 늦게 도착하면 `_flush_turn_buffer` 가 idle 로 되돌려 새로 발급된다 | `turn_id` / 도착 순서 | 〃 |
+| **답변 소리는 저장하지 않고 재생 시 기존 TTS** (기획 확정 2026-09-10) | 텍스트 채팅의 "음성" 버튼과 같은 경로라 새 코드가 없다. 저장량이 절반이 되고 끼어들기로 잘린 답변 문제가 사라진다 | 다운링크 C 녹음 — 들은 지점 계산·잘림 표시 필요 / 취소 대신 무음 송출로 완주 — WebRTC 는 1배속 수신이라 남은 답변 길이만큼 다음 턴이 밀린다 / Realtime `speak_once` 사후 합성 — 봇별 모델·목소리 재합성 비용 | 〃 |
+| **전사 델타는 원문 그대로 잇고 버퍼는 읽을 때 한 번만 strip** | OpenAI 델타는 단어 경계를 앞 공백으로 싣는다. 조각마다 strip 하면 단어가 붙고, 부분문자열 dedupe(`raw not in current`)는 한국어 반복 음절에서 상시 발동해 버퍼를 훼손한 뒤 `.done` 병합이 이어붙여 답변이 **두 배**로 저장된다 | 조각별 strip / 부분문자열 dedupe 유지 — 27자가 맞는 자리에 54자가 저장됨(재현) | 〃 |
+| **답변 전사 이벤트는 GA·레거시 두 접두사를 모두 수용** | GA 는 `response.output_audio_transcript.*`, 레거시는 `response.audio_transcript.*` 를 보낸다. v4 기본이 GA 라 레거시만 받으면 운영 기본 경로에서 기록이 **0건**이다. 프론트가 두 이름을 모두 분기하는 것이 실트래픽 근거 | 레거시 접두사만 수용 (Codex 가 P1 로 잡음) | 〃 |
+| **답변 기록은 `response.done` 에서 확정, `response.output` 에 `function_call` 이 있으면 안내말** (2026-09-10 dev 실측) — kind 판별의 보완 | GA 모델은 도구를 부르기 전에 스스로 한마디 한다("좋아, 추천해볼게요"). 자동 응답이라 kind 가 없어 `"final"` 이 되고, 전사 `.done` 이 `function_call` 보다 먼저 와서 그 시점엔 도구 호출인지 알 수 없다. 도구 턴마다 답변이 둘 들어가 이후 짝이 한 칸씩 밀렸다. 서버 안내말(`kind="tts"`)이 아니었다 — `_schedule_immediate_tts` 는 호출자 0건 | 전사 `.done` 즉시 기록(1단계 초기) / `function_call_arguments.done` 에서 기록 취소 — TurnLogger 에 되돌리기가 없다 / 문구 대조 | [[AI음성 - 음성채팅기록 dev 검증과 도구 호출 전 한마디 제외]] |
+| **답변 전사는 항목별 `.done` 을 모아 `response.done` 에서 순서대로 이어 붙인다** — `.done` 은 응답이 아니라 말 항목 단위 (2026-09-10 dev 실측) | GA 모델이 한 응답에 "좋아요, 골라볼게요." 서두 + 긴 답변처럼 말 항목 둘을 내기도 한다(도구 호출 없이). `.done` 마다 버퍼를 교체하면 마지막 항목만 남아, 순서에 따라 긴 답변이 빠진다. 서버 지시가 아니라 모델 행동이며 프로토콜상 정상 | `.done` 교체(직전 커밋, `ponytail:` 한계로 적어둔 것) / 델타만 누적하고 `.done` 무시 — 델타 유실 시 복구 불가 | [[AI음성 - 음성채팅기록 다항목 응답 기록과 화면 덮어쓰기 원인]] |
 
 ## 게이트·음질
 
@@ -91,6 +102,14 @@ updated: 2026-09-04
 | 미리듣기 통화용 시스템 프롬프트(말투) 주입 | 대기 — 최소 설정으로 시작. 관리자가 들어 보고 통화와 말투가 다르면 추가 | [[AI음성 - 미리듣기 Realtime 1회 합성 전환]] |
 | 게이트 미사용 시 잡음 오탐 횟수 | 미확정 — 오디오만으로는 2~3건 의심. dev 로그 `speech_started` 시각을 탭 A 파일과 대조해야 확정 | [[AI음성 - 탭 녹음 분석과 업링크 VAD 마스킹 PoC 기각]] |
 | 프론트의 OpenAI `error` 이벤트 일괄 통화 종료·빈 ICE 상태 핸들러 | 프론트 담당 검토 대기 (`webrtc_voice_module.js:1266`, `:1101`) | 〃 |
+| 음성기록 재생 2단계 착수 | 대기 — 설계 확정. `voice_audio` 컬럼은 신규 봇 DDL 수정 + 기존 봇 일괄 ALTER 로 팀 DBA 요청 필요 | [[음성채팅기록]] |
+| 기획서의 "오픈AI 리얼타임 2.0-mini 음성" | 미확정 — 존재하지 않는 모델 ID. `gpt-realtime-2.1-mini` 오기 여부를 기획에 확인 | 〃 |
+| 기록 재생 TTS 목소리 고정 | 미확정 — 본체 TTS 라우터가 언어별 `random.choice` 라 같은 답변을 두 번 들으면 목소리가 다를 수 있다. `TTSPlayer` 에 `name` 을 넘기면 고정된다 | 〃 |
+| 음성 답변 평가 구분 | 미확정 — `chatbot_evaluation.type` 이 `'chatting'` 고정. 음성을 `'voice'` 로 나눌지 기획 확인 (PHP 1줄) | 〃 |
+| `VOICE_CHAT_LOG_REALTIME_RESPONSE_TEXT` 빈 값 함정 | 미착수 — `.env.example` 은 빈 값인데 코드는 키 부재에만 기본 `true`. 빈 값이면 꺼진다(옆 키들은 `or` 로 흡수). `os.getenv(...) or "true"` 한 줄, 본체 동일. 별건 커밋 대상 | [[AI음성 - 음성채팅기록 dev 검증과 도구 호출 전 한마디 제외]] |
+| `_schedule_immediate_tts` → `_maybe_send_immediate_tts` → `ImmediateRagResponseNode` 사슬 | 죽은 코드 — 호출자 0건이라 v4 GA 에서 `kind="tts"` 안내말은 나가지 않는다. 본체 동기화 원칙으로 미삭제, 본체도 같은 상태일 것 | 〃 |
+| 프론트 `response.done` 말풍선 덮어쓰기 | 담당자 전달 대기 — `voice_webrtc_handler.js:606` `extractRealtimeEventText` 가 `response.output` 첫 항목만 반환, `voice_chat_bridge.js:347` 이 그 값으로 다시 그림. 말 항목이 둘이면 긴 답변이 서두로 되돌아간다 | [[AI음성 - 음성채팅기록 다항목 응답 기록과 화면 덮어쓰기 원인]] |
+| 프론트 잡음 재개(`triggerResumeOnNoise`)·`conversation.item.truncate` | 죽은 경로 — v4 는 서버가 브라우저 제어 메시지(`_BROWSER_CONTROL_TYPES`)를 버려 OpenAI 에 닿지 않는다. v3 직결 시절 로직 | 〃 |
 
 ## 관련 노트
 

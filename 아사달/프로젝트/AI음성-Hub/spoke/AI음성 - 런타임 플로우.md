@@ -5,7 +5,7 @@ tags:
   - AI음성
   - 아키텍처
 created: 2026-08-10
-updated: 2026-08-21
+updated: '"2026-09-29"'
 ---
 
 # AI음성 - 런타임 플로우
@@ -180,6 +180,67 @@ wait_time_enabled=False  UplinkAudioProxyTrackV4         지터버퍼만 (관문
 > A/B/C 재측정에서 원본급 임계값은 깨끗한 문장 조각 6개 중 1~2개만 도달시켰고, 완화값(200ms/500ms/RMS120) 사전 검증에서는 **소실 0건**이었다. 소음 차단 이득은 0 으로 실측됐다 — 굉음·지속 소음은 OpenAI `semantic_vad` + far_field 가 게이트 없이도 무시한다.
 >
 > 8-19~20 원본 복귀 + 1.2초 상향으로 소실 비용 일부가 다시 유효해졌다 — 1.2초 미만 짧은 대답 폐기, barge-in 정산 복귀로 저음량 연속 발화의 1.2초 주기 반복 폐기(force_flush 도달 불가). 다만 **쉼 조각화는 침묵 판정 400ms 재상향(8-20)으로 다시 막았다** — 400ms 미만의 어절 사이 쉼은 발화를 쪼개지 않는다. 끼어들기 오탐 방지를 우선한 사용자 결정이며, dev 배포 후 재측정으로 비용을 확인한다.
+
+### 사투리 모드 (`stt_engine=vito`, 2026-09-23)
+
+세션 생성 요청에 `stt_engine: "vito"` 가 있거나 봇이 `.env` `VOICE_STT_VITO_BOTS` 에 있으면 업링크가 갈라진다. 라우터는 세션 설정의 `turn_detection` 을 `None` 으로 바꾸고 `transcription` 을 뺀다. `_connect_realtime` 은 게이트 트랙 대신 VITO 스트리밍을 붙이고, OpenAI 로는 `SilenceAudioStreamTrack` 을 보낸다.
+
+```
+브라우저 업링크 ─▶ MediaRelay ─▶ VitoStreamingSTT (16kHz 모노, wss://openapi.vito.ai/v1/transcribe:streaming)
+                                   첫 결과  → _handle_speech_started  (다운링크 비움·진행 응답 취소·새 턴)
+                                   최종 결과 → 0.8초 조용하면 _submit_vito_text
+                                                 input_audio_buffer.clear
+                                                 conversation.item.create (input_text)
+                                                 response.create
+                                                 브라우저에 전사 완료 이벤트 모양으로 중계
+OpenAI ◀─ 침묵 트랙                              OpenAI ─▶ 음성 답변 ─▶ 다운링크 (기존과 같음)
+```
+
+이 모드에서는 OpenAI 의 `speech_started`·전사 이벤트가 나오지 않아 음성채팅기록 녹음이 남지 않는다. 사투리 지침(세션 지시문)은 두 모드 모두에 들어간다. 근거는 [[사투리 인식]].
+
+### 화자 판정 shadow (`voice_speaker_gate`, 2026-09-28)
+
+플래그 파일 `data/logs/voice_speaker_gate` 내용이 `shadow` 면 `_connect_realtime` 이 게이트 트랙을 감쌀 때 `SpeakerGate` 를 함께 만든다. 소리는 그대로 OpenAI 로 가고, 게이트는 녹음기와 같은 두 입력을 받는다.
+
+```
+업링크 트랙 on_frame ─▶ _record_audio ─┬▶ PairRecorder
+                                       └▶ SpeakerGate.feed_uplink_frame (24kHz 링버퍼 5초)
+speech_started / speech_stopped ─▶ _record_speech ─▶ 구간 자르기(앞 3초) ─▶ 작업 스레드 2개
+                                       임베딩(eres2netv2, 16kHz) → 등록 1~3 또는 점수·판정 → [SPK] 로그
+output_audio_buffer.started ─▶ 첫 답변 소리 발화끝후 ms
+세션 종료 ─▶ _drop_turn_log ─▶ 요약 로그, 기준 목소리 폐기
+```
+
+사투리 모드는 게이트 트랙 분기를 타지 않아 게이트가 생기지 않는다. 모델이나 패키지가 없으면 경고 한 번 뒤 판정만 건너뛴다. 근거는 [[화자 판정]].
+
+### OpenAI WS 전송 (`voice_openai_transport`, dev 실험, 2026-09-29)
+
+플래그 파일 `data/logs/voice_openai_transport` 내용이 `ws` 면, `_connect_realtime` 이 업링크 트랙을 만들기 전에 WS 여부를 정한다. WS 세션은 게이트 트랙 대신 `UplinkAudioProxyTrackV4`(지터버퍼만, 녹음·화자 판정 훅 그대로)를 쓰고, 대기시간을 쓰는 봇이면 게이트 임계값으로 `WaitRule` 을 만든다. 그다음 WebRTC 연결 대신 `_run_openai_ws` 로 간다. 사투리 모드 세션은 제외한다.
+
+```
+_run_openai_ws
+  OpenAIWsChannel(session_payload, wait) ── _setup_realtime_channel 에 데이터 채널처럼 넘김
+  channel.track(OpenAIWsAudioTrack) ─ _on_remote_audio → 다운링크 프록시(WebRTC 때와 같음)
+  channel.run
+    connect → session.update(통화 POST 설정에서 model 빼고, interrupt_response·create_response 는 false) → open
+    업링크 펌프: 트랙.recv() → 24kHz 모노 → input_audio_buffer.append → 20ms 칸 세기 기록 → 붙든 후보 재검사
+    수신: response.output_audio.delta → track.push (브라우저로 중계 안 함)
+          response.created/done → 생성 중·도구 대기 표시, track.end
+          speech_started  ─ AI 조용 → 바로 message
+                          └ AI 차례 → 붙듦(wait 없으면 즉시 끼어들기)
+          (펌프) 붙든 말이 게이트 3관문 통과 → response.cancel + 답변 버림 + truncate → 붙든 speech_started 를 message
+          speech_stopped  ─ 붙든 채 AI 차례 → 없던 일(이후 이 item 이벤트 숨김)
+                          ├ 확정 안 된 말의 말소리 비율 부족 → 없던 일
+                          └ 그 밖 → message
+          committed       ─ 없던 일 → conversation.item.delete
+                          └ 받은 말 → message 후 response.create (커밋→응답 생성 약 0.31초)
+          그 밖의 이벤트 → message (브라우저 중계·턴 처리 그대로)
+    send(output_audio_buffer.clear) → WS 로 안 보내고 같은 일을 직접
+  track.recv (20ms 박자, 답변 없으면 무음)
+    응답 첫 프레임 → output_audio_buffer.started, 끝 표시 → stopped (다음 루프 차례에 message 로)
+```
+
+브릿지는 OpenAI 가 자동으로 끼어들고 응답한 것처럼 이벤트를 받는다. 그래서 브릿지의 끼어들기 처리(`_handle_speech_started`)·녹음·화자 판정 코드는 바뀌지 않았다. 일시정지는 `_playback_tracks` 가 다운링크 프록시와 채널 트랙을 함께 멈춘다. 남은 답을 채널이 쥐고 있어 재개 뒤에도 AI 차례로 본다. 멈춤·종료가 보내는 출력 비우기는 채널의 도구 답 대기도 끝낸다. 근거는 [[OpenAI WS 전송]].
 
 ## 3 · 이벤트 분기 — 한 이벤트가 네 갈래
 

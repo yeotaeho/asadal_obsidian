@@ -5,7 +5,7 @@ tags:
   - AI음성
   - 아키텍처
 created: 2026-08-10
-updated: 2026-08-21
+updated: 2026-09-29
 ---
 
 # AI음성 - 파일·함수 레퍼런스
@@ -52,6 +52,8 @@ updated: 2026-08-21
 | `v4/tool_result_policy.py` | 152 | 검색 결과 포맷·중복 제거·필터·재랭킹 |
 | `v4/voice_context_summarizer.py` | 62 | 검색 결과를 음성 답변용으로 요약 |
 | `v4/__init__.py` | 0 | 비어 있음. 죽은 재수출을 걷어냈다 |
+| `v4/speaker_gate.py` | 216 | 화자 판정(shadow). 업링크 프레임·OpenAI 발화 경계로 발화를 잘라 eres2netv2 점수를 `[SPK]` 로그로만 남긴다. 플래그 파일로 켠다 (2026-09-28) |
+| `v4/openai_ws.py` | 477 | 서버↔OpenAI WS 전송(dev 실험). `OpenAIWsChannel` 은 데이터 채널 흉내이자 턴 판정(대기시간 끼어들기·서버 응답 요청, `WaitRule`), `OpenAIWsAudioTrack` 은 OpenAI 음성 트랙 흉내. 플래그 파일로 켠다 (2026-09-29, 턴 판정은 `feat-openai-ws-turn`) |
 
 ### 공용 — v2 도 함께 탄다. 고칠 때 영향 확인 필수
 
@@ -333,6 +335,39 @@ release / ICE / 스위퍼 / reap / 무프레임  →  close()  sw:466
 | `wait_time_enabled` | `True` | `False` 면 `UplinkAudioProxyTrackV4` 주입 + 필터 임계값 미주입 |
 
 `voice` 목록은 OpenAPI 스키마에 그대로 실린다 — **별도 목록 API 는 없고, `/docs` 가 단일 출처다.**
+
+### `v4/speaker_gate.py` — 화자 판정 shadow (2026-09-28)
+
+| 심볼 | 역할 |
+|---|---|
+| `speaker_gate_enabled()` | 플래그 파일 `/data/logs/voice_speaker_gate` 내용이 `shadow` 인지 본다. `_connect_realtime` 이 게이트 트랙을 감쌀 때 부른다 |
+| `SpeakerGate.feed_uplink_frame` | 녹음기와 같은 `_frame_pcm`·`_to_mono_24k` 로 24kHz 링버퍼(5초)에 쌓는다. 형식 오류면 판정만 끈다 |
+| `speech_started` / `speech_stopped` | OpenAI `audio_start_ms`·`audio_end_ms` 로 발화를 자른다. 1초 이상이면 앞 3초를 작업 스레드에 넘긴다 |
+| `_judge` / `_decide` | 16kHz 로 바꿔 임베딩한 뒤 등록하거나 점수를 매긴다. 기준 목소리와 집계는 락으로 보호한다 |
+| `answer_started` / `close` | 첫 답변 소리까지 걸린 시간과 세션 요약을 로그로 남긴다 |
+| `_embed` | 모델을 처음 쓸 때 불러온다. 파일이 없거나 실패하면 경고 한 번 뒤 `None` 을 돌려준다 |
+
+생성자를 건너뛰는 테스트 브릿지(`_bare_bridge`)에는 `_speaker_gates` 를 직접 채워야 한다. 사투리 모드 세션은 게이트 트랙 분기를 타지 않아 게이트가 없다.
+
+##### `v4/openai_ws.py` — WS 전송·턴 판정 (2026-09-29)
+
+| 심볼 | 역할 |
+|---|---|
+| `openai_ws_enabled()` | 플래그 파일 `/data/logs/voice_openai_transport` 내용이 `ws` 인지 본다. `_connect_realtime` 이 업링크 트랙을 만들기 전에 부른다 |
+| `session_payload()` | 통화 POST 와 같은 GA 세션 설정을 `session.update` 용으로 만든다(model 제외) |
+| `WaitRule` · `from_filter` · `level` | 대기시간 판정 기준. 게이트 생성자 기본값과 같고(테스트가 고정), 라우터의 `audio_filter` 로 만든다. `level` 은 20ms 세기 등급 0·1·2 |
+| `OpenAIWsAudioTrack` · `busy` | 답변 조각을 20ms 박자로 낸다. `busy` 는 들려줄 소리가 남았는지(끝 표시만 남으면 아님) |
+| `OpenAIWsChannel.__init__` | 세션 설정을 깊은 복사한 뒤 `interrupt_response`·`create_response` 를 끈다. 라우터 설정은 그대로 둔다 |
+| `_on_event` | 없던 일로 한 발화의 이벤트를 숨기고(`committed` 에서 항목 삭제), 말 시작·끝은 판정 함수로, 받은 말의 `committed` 뒤에 응답을 요청한다 |
+| `_speech_started` / `_speech_stopped` | AI 차례면 붙들고, 끝날 때 대기시간 전이면 없던 일로 한다. 조용할 때 한 말은 말소리 비율만 본다 |
+| `_check_held` | 업링크 칸마다 붙든 말이 게이트 3관문을 넘었는지 본다. 넘으면 `_barge_in` 후 붙든 말 시작을 낸다 |
+| `_barge_in` | 생성 중이면 `response.cancel`, 쌓인 소리 버림, 들려준 만큼 `truncate` |
+| `_busy` | 생성 중·트랙 재생 중(일시정지 포함)·도구 결과 대기 |
+| `OpenAIWsAudioTrack.pause` / `resume` | 일시정지 중에는 남은 답을 쥔 채 `recv` 가 기다린다. `clear` 도 일시정지를 푼다 |
+| `send(output_audio_buffer.clear)` | 브릿지의 멈춤·종료 — 채널이 직접 비우고 도구 답 대기도 끝낸다 |
+| `_heard` · `_window` · `_voiced` | 보낸 업링크의 세기를 OpenAI 입력 버퍼와 같은 시간축(20ms 칸, 30초 보관)에 적고 구간별 소리·말소리 길이를 센다 |
+
+브릿지는 `_run_openai_ws(…, wait)` 로 채널을 만들고, 대기시간 미사용 봇은 `wait=None`(말 시작 즉시 끼어들기)이다. 일시정지·재개와 다운링크 비우기(`_flush_downlink`)는 `_playback_tracks` 로 다운링크 프록시와 채널 트랙을 함께 다룬다. 재현 시험은 `speaker_eval/ws_turn_replay.py` 가 이 채널만 띄워 돌린다.
 
 ## 손댈 때 규칙
 

@@ -5,7 +5,7 @@ tags:
   - AI음성
   - 아키텍처
 created: 2026-08-20
-updated: 2026-08-20
+updated: '"2026-09-29"'
 ---
 
 # AI음성 - 폴더·파일 역할 지도
@@ -261,6 +261,8 @@ build_minutes_graph:  stt → chunking → summarize
 | 화자 역할이 잘못 붙음 | `infrastructure/utils/segment_enricher.py`, `learning/modules/postprocess/speaker_stats.py` |
 | 회의록 요약 품질 | `services/summarization.py`, `minutes/workflow/nodes/summarize.py` |
 | 새 엔드포인트 추가 | `infrastructure/api/router/` + `voice_router.py` 등록 |
+| 다른 사람·TV 목소리 판정(화자 판정) | `voice_chat/v4/speaker_gate.py` + `server_webrtc.py` 연결 5곳. 스위치는 `data/logs/voice_speaker_gate` |
+| 서버↔OpenAI 를 WebSocket 으로(dev 실험) | `voice_chat/v4/openai_ws.py` + `server_webrtc.py` `_connect_realtime`·`_run_openai_ws`. 스위치는 `data/logs/voice_openai_transport` |
 
 ## 관련 노트
 
